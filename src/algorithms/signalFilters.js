@@ -15,7 +15,7 @@ export const calculateMovingAverage = (dataArr, returnResult, renderChart) => {
       for (var i = startIndex; i < startIndex + frameRateDelimeter; i++) {
         sum = sum + arr[i];
       }
-      movingAverageArr.push(0.2 * sum);
+      movingAverageArr.push((1 / frameRateDelimeter) * sum);
       movingAverage(arr, startIndex + frameRateDelimeter);
     }
   };

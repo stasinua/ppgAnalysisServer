@@ -25,6 +25,7 @@ export const calculateWeightedPeaksBPM = (dataArr, frameRate) => {
 
   let peaksArray = [];
 
+  // Default algorithm
   for (var i = 0; i < dataArr.length; i++) {
     if (dataArr[i] - averageAmplitude > weight * standardDeviation) {
       peaksArray.push({
@@ -33,6 +34,16 @@ export const calculateWeightedPeaksBPM = (dataArr, frameRate) => {
       });
     }
   }
+
+  // Moving average dependent algorithm
+  // for (var i = 0; i < dataArr.length; i++) {
+  //   if (dataArr[i] - averageAmplitude > weight * standardDeviation) {
+  //     peaksArray.push({
+  //       index: i,
+  //       value: dataArr[i]
+  //     });
+  //   }
+  // }
 
   console.log("calculateWeightedPeaksBPM: peaksArray:", peaksArray);
 
