@@ -1,9 +1,13 @@
 import { calculateStandardDeviation } from './signalParameters';
 
-export const calculateWeightedPeaksBPM = (dataArr, frameRate) => {
+export const calculateWeightedPeaksBPM = (dataArr, frameRate, averageAmplitudeVarianceArr) => {
   // Based on: https://pdfs.semanticscholar.org/1d60/4572ec6ed77bd07fbb4e9fc32ab5271adedb.pdf
 
-  const weight = 1.2; // typically 1 <= h <= 3
+  let weight = 1.2; // typically 1 <= h <= 3
+
+  if (averageAmplitudeVarianceArr) {
+    weight = 0.9;
+  }
 
   // Number of frames for peak occurence.
   const windowSize = {
@@ -23,27 +27,43 @@ export const calculateWeightedPeaksBPM = (dataArr, frameRate) => {
     averageAmplitude
   );
 
+  // const testDataArr = averageAmplitudeVarianceArr;
+  //
+  // const testAverageAmplitude =
+  //   testDataArr.reduce(
+  //     (accumulator, currentValue) => accumulator + currentValue
+  //   ) / testDataArr.length;
+  //
+  // const testStandardDeviation = calculateStandardDeviation(
+  //   testDataArr,
+  //   testAverageAmplitude
+  // );
+  //
+  // console.log("Test params:", testAverageAmplitude, testStandardDeviation, testAverageAmplitude / testStandardDeviation);
+
   let peaksArray = [];
 
-  // Default algorithm
-  for (var i = 0; i < dataArr.length; i++) {
-    if (dataArr[i] - averageAmplitude > weight * standardDeviation) {
-      peaksArray.push({
-        index: i,
-        value: dataArr[i]
-      });
+  if (averageAmplitudeVarianceArr) {
+    // Moving average dependent algorithm
+    for (var i = 0; i < dataArr.length; i++) {
+      if (dataArr[i] - averageAmplitudeVarianceArr[i] > weight * standardDeviation) {
+        peaksArray.push({
+          index: i,
+          value: dataArr[i]
+        });
+      }
+    }
+  } else {
+    // Default algorithm
+    for (var i = 0; i < dataArr.length; i++) {
+      if (dataArr[i] - averageAmplitude > weight * standardDeviation) {
+        peaksArray.push({
+          index: i,
+          value: dataArr[i]
+        });
+      }
     }
   }
-
-  // Moving average dependent algorithm
-  // for (var i = 0; i < dataArr.length; i++) {
-  //   if (dataArr[i] - averageAmplitude > weight * standardDeviation) {
-  //     peaksArray.push({
-  //       index: i,
-  //       value: dataArr[i]
-  //     });
-  //   }
-  // }
 
   console.log("calculateWeightedPeaksBPM: peaksArray:", peaksArray);
 
@@ -79,7 +99,7 @@ export const calculateWeightedPeaksBPM = (dataArr, frameRate) => {
       );
     }
   });
-  console.log(periodsBetweenPeaks);
+  // console.log(periodsBetweenPeaks);
   let peaksPeriodBPM = 0;
   if (periodsBetweenPeaks.length > 0) {
     peaksPeriodBPM =
