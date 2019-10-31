@@ -32,3 +32,13 @@ export const smoothArray = (dataArr, smoothing) => {
 
   return resultArr;
 }
+
+export const amplitudeNormalization = (dataArr) => {
+  const meanAmplitudeVariance = smoothArray(dataArr, 20);
+
+  let resultArr = dataArr.map((elem, index) => {
+    return elem - meanAmplitudeVariance[index];
+  });
+
+  return resultArr;
+}
