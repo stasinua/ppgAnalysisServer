@@ -8,6 +8,7 @@ import {
   calculateADT
 } from "../algorithms/peaksDetection";
 import {
+  arrayAverage,
   calculateStandardDeviation,
   calculateAutocorrelation
 } from "../algorithms/signalParameters";
@@ -69,11 +70,9 @@ class LineChart extends React.Component {
     // );
 
     console.log(
-      console.log(
-        "calculateWeightedPeaksBPM:",
-        calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
-      )
-    );
+      "calculateWeightedPeaksBPM:",
+      calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
+    )
 
     const ADTData = calculateADT(smoothedArray, smoothedArray.length / 10).slopeValues;
     const preparedADTData = ADTData.map((elem, index) => {
@@ -84,10 +83,7 @@ class LineChart extends React.Component {
 
   returnResult(dataArr, movingAverageArr) {
     let peaksNumber = 0;
-    const averageAmplitude =
-      movingAverageArr.reduce(
-        (accumulator, currentValue) => accumulator + currentValue
-      ) / movingAverageArr.length;
+    const averageAmplitude = arrayAverage(dataArr);
 
     for (var i = 0; i < movingAverageArr.length; i++) {
       if (movingAverageArr[i] > averageAmplitude) {

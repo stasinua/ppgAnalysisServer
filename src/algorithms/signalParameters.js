@@ -1,3 +1,19 @@
+export const arrayAverage = (dataArr, accessParam) => {
+  if (accessParam) {
+    return (
+      dataArr.reduce((accumulator, currentValue) => {
+        return accumulator + currentValue[accessParam];
+      }, 0) / dataArr.length
+    );
+  } else {
+    return (
+      dataArr.reduce(
+        (accumulator, currentValue) => accumulator + currentValue
+      ) / dataArr.length
+    );
+  }
+};
+
 export const calculateStandardDeviation = (dataArr, averageAmplitude) => {
   let sd = 0;
   for (var i = 0; i < dataArr.length; i++) {
@@ -5,13 +21,10 @@ export const calculateStandardDeviation = (dataArr, averageAmplitude) => {
   }
 
   return Math.sqrt(sd);
-}
+};
 
-export const calculateAutocorrelation = (dataArr) => {
-  const averageAmplitude =
-    dataArr.reduce(
-      (accumulator, currentValue) => accumulator + currentValue
-    ) / dataArr.length;
+export const calculateAutocorrelation = dataArr => {
+  const averageAmplitude = arrayAverage(dataArr);
 
   // const standardDeviation = calculateStandardDeviation(
   //   dataArr,
@@ -37,4 +50,4 @@ export const calculateAutocorrelation = (dataArr) => {
   }
 
   return autocorrelation;
-}
+};
