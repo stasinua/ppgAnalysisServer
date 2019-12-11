@@ -1,3 +1,4 @@
+import { arrayAverage } from "./signalParameters";
 export const calculateMovingAverage = (dataArr, returnResult, renderChart) => {
   const frameRateDelimeter = Math.round((dataArr.length / 10) / 6);
   var movingAverageArr = [];
@@ -37,8 +38,17 @@ export const amplitudeNormalization = (dataArr) => {
   const meanAmplitudeVariance = smoothArray(dataArr, 20);
 
   let resultArr = dataArr.map((elem, index) => {
-    return elem - meanAmplitudeVariance[index];
+    return elem + meanAmplitudeVariance[index];
   });
+  // Complex amplitude normalization. Introduces phase shift
+  // const averageAmplitude = arrayAverage(dataArr);
+  // let resultArr = dataArr.map((elem, index) => {
+  //   if (elem < averageAmplitude) {
+  //     return elem + meanAmplitudeVariance[index];
+  //   } else {
+  //     return elem - meanAmplitudeVariance[index];
+  //   }
+  // });
 
   return resultArr;
 }

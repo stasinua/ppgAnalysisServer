@@ -226,6 +226,7 @@ export const calculateADT = (dataArr, frameRate) => {
   let slopeValues = [];
   let followPPG = false;
   let peaks = [];
+  let previousPeaksLength = 0;
 
   let averagePulseInterval = 0; // Frames
 
@@ -269,6 +270,7 @@ export const calculateADT = (dataArr, frameRate) => {
                   max: peaks[peaks.length - 1].index + refractoryPeriod.max
                 })
               ) {
+                previousPeaksLength = peaks.length;
                 peaks.push({
                   index: i,
                   value: dataArr[i]
@@ -278,24 +280,6 @@ export const calculateADT = (dataArr, frameRate) => {
               } else {
                 slopeValues.push(dataArr[i]);
               }
-              // Has problems with "ppgScan_1572260769603"
-              // if (
-              //   isCorrectPeak(i, {
-              //     min: peaks[peaks.length - 1].index + refractoryPeriod.min,
-              //     max:
-              //       peaks[peaks.length - 1].index +
-              //       arrayAverage(peaks, 'index')
-              //   })
-              // ) {
-              //   peaks.push({
-              //     index: i,
-              //     value: dataArr[i]
-              //   });
-              //   followPPG = false;
-              //   slopeValues.push(dataArr[i]);
-              // } else {
-              //   slopeValues.push(dataArr[i]);
-              // }
             } else {
               if (
                 isCorrectPeak(i, {
@@ -326,20 +310,39 @@ export const calculateADT = (dataArr, frameRate) => {
         }
       } else {
         // console.log('followPPG "false"', i, slopeValue);
-        slopeValue = calculateSlope(
-          slopeValues[i - 1],
-          slopeChangeRate.vMin,
-          peaks.length > 0 ? peaks[peaks.length - 1].value : 0,
-          standardDeviation,
-          frameRate
-        );
-        slopeValues.push(slopeValue);
-        followPPG = isSlopeMatchWithPPG(
-          dataArr,
-          slopeValue,
-          i,
-          standardDeviation
-        );
+        // Classic ADT
+        if (peaks.length > previousPeaksLength) {
+          console.log("here");
+          slopeValue = calculateSlope(
+            slopeValues[i - 1],
+            slopeChangeRate.vMax,
+            peaks.length > 0 ? peaks[peaks.length - 1].value : 0,
+            standardDeviation,
+            frameRate
+          );
+          slopeValues.push(slopeValue);
+          followPPG = isSlopeMatchWithPPG(
+            dataArr,
+            slopeValue,
+            i,
+            standardDeviation
+          );
+        } else {
+          slopeValue = calculateSlope(
+            slopeValues[i - 1],
+            slopeChangeRate.vMin,
+            peaks.length > 0 ? peaks[peaks.length - 1].value : 0,
+            standardDeviation,
+            frameRate
+          );
+          slopeValues.push(slopeValue);
+          followPPG = isSlopeMatchWithPPG(
+            dataArr,
+            slopeValue,
+            i,
+            standardDeviation
+          );
+        }
       }
     }
   }
@@ -349,9 +352,7 @@ export const calculateADT = (dataArr, frameRate) => {
   peaks.forEach((element, peakIndex) => {
     if (peakIndex + 1 <= peaks.length - 1) {
       periodsBetweenPeaks.push(
-        Math.abs(
-          peaks[peakIndex].index - peaks[peakIndex + 1].index
-        )
+        Math.abs(peaks[peakIndex].index - peaks[peakIndex + 1].index)
       );
     }
   });
@@ -361,13 +362,10 @@ export const calculateADT = (dataArr, frameRate) => {
     peaksPeriodBPM = (frameRate / arrayAverage(periodsBetweenPeaks)) * 60; // Independent from scan period
   }
 
-  console.log(
-    "calculateADT:",
-    {
-      peaks,
-      peaksPeriodBPM
-    }
-  )
+  console.log("calculateADT:", {
+    peaks,
+    peaksPeriodBPM
+  });
 
   return {
     slopeValues: slopeValues,
@@ -390,8 +388,8 @@ function calculateSlope(
   // console.log('calculateSlope: samplingFrequency', samplingFrequency);
   return (
     previousMeanSlopeAmp +
-    slopeChangeRate *
-      ((previousPeakAmp + standardDeviation) / samplingFrequency)
+    (slopeChangeRate *
+      ((previousPeakAmp + standardDeviation) / samplingFrequency))
   );
 }
 
@@ -401,7 +399,40 @@ function isSlopeMatchWithPPG(
   slopeIndex,
   standardDeviation
 ) {
-  if (slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]) {
+  // Example closer to ADT original
+  // if (Math.abs(slopeValue - dataArr[slopeIndex]) <= standardDeviation * 0.1) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  // Working example for weights > 1.2
+  // if (slopeValue >= dataArr[slopeIndex]) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  // Working example for weights < 1.2
+  // if (
+  //   slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]
+  // ) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  //Test
+  if (
+    slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]
+    // slopeValue - standardDeviation * 0.1 <= dataArr[slopeIndex]
+  ) {
     // console.log("Is match?", true);
     return true;
   } else {
@@ -412,6 +443,294 @@ function isSlopeMatchWithPPG(
 }
 
 function isCorrectPeak(peakIndex, refractoryPeriod) {
+  if (peakIndex > refractoryPeriod.min && peakIndex < refractoryPeriod.max) {
+    // console.log("isCorrectPeak: true", peakIndex);
+    return true;
+  } else {
+    // console.log("isCorrectPeak: false", peakIndex);
+    // console.log("isCorrectPeak: refractoryPeriod.min", refractoryPeriod.min);
+    // console.log("isCorrectPeak: refractoryPeriod.max", refractoryPeriod.max);
+    return false;
+  }
+}
+
+export const calculateModifiedADT = (dataArr, frameRate) => {
+  const refractoryPeriod = {
+    min: (10 * frameRate) / 26, // Corresponds to 160BPM
+    max: (10 * frameRate) / 10 // Corresponds to 60BPM
+  }; // Frames
+  const slopeChangeRate = {
+    vMax: -0.9,
+    vMin: 0.9
+  };
+  const averageAmplitude = arrayAverage(dataArr);
+
+  const descSortedDataArr = dataArr.slice().sort((a, b) => {
+    return b - a;
+  });
+
+  const PPGMax = descSortedDataArr[0];
+  const PPGMin = descSortedDataArr[dataArr.length - 1];
+
+  // Slope initial amplitudes
+  // const vMaxSlopeInit = 0.2 * PPGMax;
+  // const vMinSlopeInit = 0.2 * PPGMin;
+  const vMaxSlopeInit = PPGMax;
+  const vMinSlopeInit = PPGMin;
+
+  const standardDeviation = calculateStandardDeviation(
+    dataArr,
+    averageAmplitude
+  );
+
+  console.log("Initial values:");
+  console.log("averageAmplitude:", averageAmplitude);
+  console.log("PPGMax:", PPGMax);
+  console.log("PPGMin:", PPGMin);
+  console.log("vMaxSlopeInit:", vMaxSlopeInit);
+  console.log("vMinSlopeInit:", vMinSlopeInit);
+  console.log("standardDeviation:", standardDeviation);
+
+  // Calculation data holders
+  let slopeValue = 0;
+  let slopeValues = [];
+  let followPPG = false;
+  let peaks = [];
+  let previousPeaksLength = 0;
+
+  let averagePulseInterval = 0; // Frames
+
+  for (var i = 0; i < dataArr.length; i++) {
+    if (i === 0) {
+      console.log("Initial step");
+      slopeValue = calculateSlopeMod(
+        vMinSlopeInit,
+        slopeChangeRate.vMin,
+        0,
+        standardDeviation,
+        frameRate
+      );
+      slopeValues.push(slopeValue);
+      followPPG = isSlopeMatchWithPPGMod(
+        dataArr,
+        slopeValue,
+        i,
+        standardDeviation
+      );
+    } else {
+      // console.log('Another step index:', i);
+      if (followPPG) {
+        // console.log('followPPG "true"', i, slopeValue);
+        if (
+          dataArr[i] > dataArr[i + 1] &&
+          dataArr[i + 1] > dataArr[i + 2] &&
+          dataArr[i + 2] > dataArr[i + 3]
+        ) {
+          // console.log(
+          //   "PEAK DETECTED:",
+          //   dataArr[i] > dataArr[i + 1],
+          //   dataArr[i],
+          //   dataArr[i + 1]
+          // );
+          if (peaks.length > 0) {
+            if (peaks.length > 1) {
+              if (
+                isCorrectPeakMod(i, {
+                  min: peaks[peaks.length - 1].index + refractoryPeriod.min,
+                  max: peaks[peaks.length - 1].index + refractoryPeriod.max
+                })
+              ) {
+                previousPeaksLength = peaks.length;
+                peaks.push({
+                  index: i,
+                  value: dataArr[i]
+                });
+                followPPG = false;
+                slopeValues.push(dataArr[i]);
+              } else {
+                slopeValues.push(dataArr[i]);
+              }
+              // Has problems with "ppgScan_1572260769603"
+              // if (
+              //   isCorrectPeak(i, {
+              //     min: peaks[peaks.length - 1].index + refractoryPeriod.min,
+              //     max:
+              //       peaks[peaks.length - 1].index +
+              //       arrayAverage(peaks, 'index')
+              //   })
+              // ) {
+              //   peaks.push({
+              //     index: i,
+              //     value: dataArr[i]
+              //   });
+              //   followPPG = false;
+              //   slopeValues.push(dataArr[i]);
+              // } else {
+              //   slopeValues.push(dataArr[i]);
+              // }
+            } else {
+              if (
+                isCorrectPeakMod(i, {
+                  min: peaks[peaks.length - 1].index + refractoryPeriod.min,
+                  max: peaks[peaks.length - 1].index + refractoryPeriod.max
+                })
+              ) {
+                peaks.push({
+                  index: i,
+                  value: dataArr[i]
+                });
+                followPPG = false;
+                slopeValues.push(dataArr[i]);
+              } else {
+                slopeValues.push(dataArr[i]);
+              }
+            }
+          } else {
+            peaks.push({
+              index: i,
+              value: dataArr[i]
+            });
+            followPPG = false;
+            slopeValues.push(dataArr[i]);
+          }
+        } else {
+          slopeValues.push(dataArr[i]);
+        }
+      } else {
+        // console.log('followPPG "false"', i, slopeValue);
+        // Classic ADT
+        // if (peaks.length > previousPeaksLength) {
+        //   console.log("here");
+        //   slopeValue = calculateSlope(
+        //     slopeValues[i - 1],
+        //     slopeChangeRate.vMax,
+        //     peaks.length > 0 ? peaks[peaks.length - 1].value : 0,
+        //     standardDeviation,
+        //     frameRate
+        //   );
+        //   slopeValues.push(slopeValue);
+        //   followPPG = isSlopeMatchWithPPG(
+        //     dataArr,
+        //     slopeValue,
+        //     i,
+        //     standardDeviation
+        //   );
+        // } else {
+          slopeValue = calculateSlopeMod(
+            slopeValues[i - 1],
+            slopeChangeRate.vMin,
+            peaks.length > 0 ? peaks[peaks.length - 1].value : 0,
+            standardDeviation,
+            frameRate
+          );
+          slopeValues.push(slopeValue);
+          followPPG = isSlopeMatchWithPPGMod(
+            dataArr,
+            slopeValue,
+            i,
+            standardDeviation
+          );
+        // }
+      }
+    }
+  }
+
+  let periodsBetweenPeaks = [];
+
+  peaks.forEach((element, peakIndex) => {
+    if (peakIndex + 1 <= peaks.length - 1) {
+      periodsBetweenPeaks.push(
+        Math.abs(peaks[peakIndex].index - peaks[peakIndex + 1].index)
+      );
+    }
+  });
+
+  let peaksPeriodBPM = 0;
+  if (periodsBetweenPeaks.length > 0) {
+    peaksPeriodBPM = (frameRate / arrayAverage(periodsBetweenPeaks)) * 60; // Independent from scan period
+  }
+
+  console.log("calculateADT:", {
+    peaks,
+    peaksPeriodBPM
+  });
+
+  return {
+    slopeValues: slopeValues,
+    peaks: peaks,
+    peaksPeriodBPM: peaksPeriodBPM
+  };
+};
+
+function calculateSlopeMod(
+  previousMeanSlopeAmp,
+  slopeChangeRate,
+  previousPeakAmp,
+  standardDeviation,
+  samplingFrequency
+) {
+  // console.log('calculateSlope: previousMeanSlopeAmp', previousMeanSlopeAmp);
+  // console.log('calculateSlope: slopeChangeRate', slopeChangeRate);
+  // console.log('calculateSlope: previousPeakAmp', previousPeakAmp);
+  // console.log('calculateSlope: standardDeviation', standardDeviation);
+  // console.log('calculateSlope: samplingFrequency', samplingFrequency);
+  return (
+    previousMeanSlopeAmp +
+    (slopeChangeRate *
+      ((previousPeakAmp + standardDeviation) / samplingFrequency))
+  );
+}
+
+function isSlopeMatchWithPPGMod(
+  dataArr,
+  slopeValue,
+  slopeIndex,
+  standardDeviation
+) {
+  // Example closer to ADT original
+  // if (Math.abs(slopeValue - dataArr[slopeIndex]) <= standardDeviation * 0.1) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  // Working example for weights > 1.2
+  // if (slopeValue >= dataArr[slopeIndex]) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  // Working example for weights < 1.2
+  // if (
+  //   slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]
+  // ) {
+  //   // console.log("Is match?", true);
+  //   return true;
+  // } else {
+  //   // console.log('Is match index', slopeIndex);
+  //   // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+  //   return false;
+  // }
+  //Test
+  if (
+    slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]
+    // slopeValue - standardDeviation * 0.1 <= dataArr[slopeIndex]
+  ) {
+    // console.log("Is match?", true);
+    return true;
+  } else {
+    // console.log('Is match index', slopeIndex);
+    // console.log('Is match?', dataArr[slopeIndex], slopeValue);
+    return false;
+  }
+}
+
+function isCorrectPeakMod(peakIndex, refractoryPeriod) {
   if (peakIndex > refractoryPeriod.min && peakIndex < refractoryPeriod.max) {
     // console.log("isCorrectPeak: true", peakIndex);
     return true;
@@ -441,162 +760,3 @@ function isCorrectPeak(peakIndex, refractoryPeriod) {
   //   return true;
   // }
 }
-
-// Working example. Not match origin algorithm
-// Able to detect both main beat and secondary beat(respiration?)
-// export const calculateADT = (dataArr, frameRate) => {
-//   const refractoryPeriod = 10; // Frames
-//   // const slopeChangeRate = {
-//   //   vMax: -0.6,
-//   //   vMin: 0.6
-//   // };
-//   const slopeChangeRate = {
-//     vMax: -0.9,
-//     vMin: 0.9
-//   };
-//   const averageAmplitude =
-//     dataArr.reduce(
-//       (accumulator, currentValue) => accumulator + currentValue
-//     ) / dataArr.length;
-//
-//   const descSortedDataArr = dataArr.slice().sort((a, b) => {
-//     return b - a;
-//   });
-//
-//   const PPGMax = descSortedDataArr[0];
-//   const PPGMin = descSortedDataArr[dataArr.length - 1];
-//
-//   // Slope initial amplitudes
-//   // const vMaxSlopeInit = 0.2 * PPGMax;
-//   // const vMinSlopeInit = 0.2 * PPGMin;
-//   const vMaxSlopeInit = PPGMax;
-//   const vMinSlopeInit = PPGMin;
-//
-//   const standardDeviation = calculateStandardDeviation(
-//     dataArr,
-//     averageAmplitude
-//   );
-//
-//   console.log('Initial values:');
-//   console.log('averageAmplitude:', averageAmplitude);
-//   console.log('PPGMax:', PPGMax);
-//   console.log('PPGMin:', PPGMin);
-//   console.log('vMaxSlopeInit:', vMaxSlopeInit);
-//   console.log('vMinSlopeInit:', vMinSlopeInit);
-//   console.log('standardDeviation:', standardDeviation);
-//
-//   // Calculation data holders
-//   let slopeValue = 0;
-//   let slopeValues = [];
-//   let followPPG = false;
-//   let peaks = [];
-//
-//   let averagePulseInterval = 0; // Frames
-//
-//   for (var i = 0; i < dataArr.length; i++) {
-//     if (i === 0) {
-//       console.log('Initial step');
-//       slopeValue = calculateSlope(vMinSlopeInit, slopeChangeRate.vMin, 0, standardDeviation, frameRate);
-//       slopeValues.push(slopeValue);
-//       followPPG = isSlopeMatchWithPPG(dataArr, slopeValue, i, standardDeviation);
-//     } else {
-//       // console.log('Another step index:', i);
-//       if (followPPG) {
-//         console.log('followPPG "true"', i, slopeValue);
-//         if (dataArr[i] > dataArr[i + 1]) {
-//           console.log('PEAK DETECTED:', dataArr[i] > dataArr[i + 1], dataArr[i], dataArr[i + 1]);
-//           if (peaks.length > 0) {
-//             if (isCorrectPeak(i, { min: peaks[peaks.length - 1].index, max: peaks[peaks.length - 1].index + refractoryPeriod})) {
-//               peaks.push({
-//                 index: i,
-//                 value: dataArr[i]
-//               });
-//               followPPG = false;
-//               slopeValues.push(dataArr[i]);
-//               console.log('bol:', i);
-//             } else {
-//               console.log('rol:', i);
-//               slopeValues.push(dataArr[i]);
-//             }
-//           } else {
-//             console.log('vol:', i);
-//             peaks.push({
-//               index: i,
-//               value: dataArr[i]
-//             });
-//             followPPG = false;
-//             slopeValues.push(dataArr[i]);
-//           }
-//         } else {
-//           console.log('lol:', i);
-//           slopeValues.push(dataArr[i]);
-//         }
-//       } else {
-//         console.log('followPPG "false"', i, slopeValue);
-//         slopeValue = calculateSlope(slopeValues[i - 1], slopeChangeRate.vMin, peaks.length > 0 ? peaks[peaks.length - 1].value : 0, standardDeviation, frameRate);
-//         slopeValues.push(slopeValue);
-//         followPPG = isSlopeMatchWithPPG(dataArr, slopeValue, i, standardDeviation);
-//       }
-//     }
-//   }
-//
-//   console.log('PEAKS:', peaks);
-//
-//   return {
-//     slopeValues: slopeValues,
-//     peaks: peaks
-//   };
-// }
-//
-//
-// function calculateSlope(
-//   previousMeanSlopeAmp,
-//   slopeChangeRate,
-//   previousPeakAmp,
-//   standardDeviation,
-//   samplingFrequency
-// ) {
-//   // console.log('calculateSlope: previousMeanSlopeAmp', previousMeanSlopeAmp);
-//   // console.log('calculateSlope: slopeChangeRate', slopeChangeRate);
-//   // console.log('calculateSlope: previousPeakAmp', previousPeakAmp);
-//   // console.log('calculateSlope: standardDeviation', standardDeviation);
-//   // console.log('calculateSlope: samplingFrequency', samplingFrequency);
-//   return (
-//     previousMeanSlopeAmp +
-//     slopeChangeRate *
-//       ((previousPeakAmp + standardDeviation) / samplingFrequency)
-//   );
-// }
-//
-// function isSlopeMatchWithPPG(dataArr, slopeValue, slopeIndex, standardDeviation) {
-//   if (slopeValue + standardDeviation * 0.1 >= dataArr[slopeIndex]) {
-//     console.log('Is match?', true);
-//     return true;
-//   } else {
-//     // console.log('Is match index', slopeIndex);
-//     // console.log('Is match?', dataArr[slopeIndex], slopeValue);
-//     return false;
-//   }
-// }
-//
-// function isCorrectPeak(peakIndex, refractoryPeriod) {
-//   if (peakIndex > refractoryPeriod.min && peakIndex < refractoryPeriod.max) {
-//     console.log('isCorrectPeak: false', peakIndex);
-//     return false;
-//   } else {
-//     console.log('isCorrectPeak: true', peakIndex);
-//     return true;
-//   }
-//   // Alternative
-//   // if (Math.abs(
-//   //   peakIndex - previousPeakIndex
-//   // ) < refractoryPeriod.min || Math.abs(
-//   //   peakIndex - previousPeakIndex
-//   // ) > refractoryPeriod.max) {
-//   //   console.log('isCorrectPeak: false', peakIndex);
-//   //   return false;
-//   // } else {
-//   //   console.log('isCorrectPeak: true', peakIndex);
-//   //   return true;
-//   // }
-// }

@@ -4,8 +4,12 @@
   "private": true,
   "dependencies": {
     "d3": "^5.12.0",
+    "dsp.js": "^1.0.1",
+    "fft.js": "indutny/fft.js",
+    "p5": "^0.10.2",
     "react": "^16.10.2",
     "react-dom": "^16.10.2",
+    "react-p5": "1.1.8",
     "react-scripts": "3.2.0"
   },
   "scripts": {

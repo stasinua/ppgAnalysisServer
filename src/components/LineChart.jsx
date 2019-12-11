@@ -10,7 +10,8 @@ import {
 import {
   arrayAverage,
   calculateStandardDeviation,
-  calculateAutocorrelation
+  calculateAutocorrelation,
+  calculateFFT
 } from "../algorithms/signalParameters";
 import {
   calculateMovingAverage,
@@ -32,53 +33,89 @@ class LineChart extends React.Component {
         return elem;
       }
     });
-
-    const preparedPPGData = filteredPPGData.map((elem, index) => {
-      return { x: index, y: elem };
+    function getMinOfArray(numArray) {
+      return Math.min.apply(null, numArray);
+    }
+    const minArrValue = getMinOfArray(filteredPPGData);
+    const normalizedPPGData = filteredPPGData.map((elem, index) => {
+      return elem - minArrValue;
     });
-    // console.log(preparedPPGData);
-    this.renderLineChart(preparedPPGData);
-
+    // const normalizedPPGData = filteredPPGData;
+    //
+    // const preparedPPGData = filteredPPGData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // // console.log(preparedPPGData);
+    // this.renderLineChart(preparedPPGData);
+    //
     // const amplitudeNormalizedArr = amplitudeNormalization(filteredPPGData);
-    // const preparedAmplitudeNormalizedArr = amplitudeNormalizedArr.map(
-    //   (elem, index) => {
-    //     return { x: index, y: elem };
-    //   }
-    // );
-    // this.renderLineChart(preparedAmplitudeNormalizedArr);
-
-    const smoothedArray = smoothArray(filteredPPGData, 3);
+    // // const preparedAmplitudeNormalizedArr = amplitudeNormalizedArr.map(
+    // //   (elem, index) => {
+    // //     return { x: index, y: elem };
+    // //   }
+    // // );
+    // // this.renderLineChart(preparedAmplitudeNormalizedArr);
+    //
+    const smoothedArray = smoothArray(normalizedPPGData, 5);
     const preparedSmoothedArray = smoothedArray.map((elem, index) => {
       return { x: index, y: elem };
     });
     this.renderLineChart(preparedSmoothedArray);
-
-    calculateMovingAverage(
-      filteredPPGData,
-      this.returnResult,
-      this.renderLineChart
-    );
-
-    const autocorrelatedData = calculateAutocorrelation(filteredPPGData);
-    const preparedAutoCorData = autocorrelatedData.map((elem, index) => {
-      return { x: index, y: elem };
-    });
-    this.renderLineChart(preparedAutoCorData);
-    // console.log(
-    //   "Autocorrelation BPM:",
-    //   calculateAutocorrelationBPM(autocorrelatedData)
+    //
+    // calculateMovingAverage(
+    //   filteredPPGData,
+    //   this.returnResult,
+    //   this.renderLineChart
     // );
-
-    console.log(
-      "calculateWeightedPeaksBPM:",
-      calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
-    )
-
+    //
+    // const autocorrelatedData = calculateAutocorrelation(filteredPPGData);
+    // const preparedAutoCorData = autocorrelatedData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedAutoCorData);
+    // // console.log(
+    // //   "Autocorrelation BPM:",
+    // //   calculateAutocorrelationBPM(autocorrelatedData)
+    // // );
+    //
+    // console.log(
+    //   "calculateWeightedPeaksBPM:",
+    //   calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
+    // )
+    //
     const ADTData = calculateADT(smoothedArray, smoothedArray.length / 10).slopeValues;
     const preparedADTData = ADTData.map((elem, index) => {
       return { x: index, y: elem };
     });
     this.renderMultipleLinesChart(preparedSmoothedArray, preparedADTData);
+    //
+    // const meanMinus = amplitudeNormalization(filteredPPGData);
+    // const preparedmeanMinus = meanMinus.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedmeanMinus);
+    //
+    // const autocorrelatedMeanData = calculateAutocorrelation(meanMinus);
+    // const preparedAutoCorMeanData = autocorrelatedMeanData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedAutoCorMeanData);
+    // const fftData = calculateFFT(normalizedPPGData)
+    // const fftFrequencyData = fftData.outFrequencyData;
+    // const reconstructedSignal = fftData.ifftOut;
+    // const preparedFFTData = fftFrequencyData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // const preparediFFTData = reconstructedSignal.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedFFTData);
+    // this.renderLineChart(preparediFFTData);
+    // const smoothedFFTArray = smoothArray(reconstructedSignal, 10);
+    // const preparedFFTSmoothedArray = smoothedFFTArray.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedFFTSmoothedArray);
   }
 
   returnResult(dataArr, movingAverageArr) {
