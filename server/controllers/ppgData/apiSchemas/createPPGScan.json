@@ -1,0 +1,43 @@
+{
+  "properties": {
+    "body": {
+      "ppgScan": {
+        "userName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "userAge": {
+          "type": "string",
+          "minLength": 2
+        },
+        "biologicalSex": {
+          "type": "string",
+          "minLength": 4
+        },
+        "rawPPG": {
+          "type": "array"
+        },
+        "modifiedADT": {
+          "type": "string"
+        },
+        "bandpassFilteredADT": {
+          "type": "string"
+        },
+        "weightedPeaksAverageBPM": {
+          "type": "string"
+        },
+        "watchBPM": {
+          "type": "array"
+        },
+        "lowLight": {
+          "type": "boolean"
+        },
+        "fingerMovement": {
+          "type": "boolean"
+        },
+        "required": ["userName","userAge","biologicalSex","rawPPG","modifiedADT","bandpassFilteredADT","weightedPeaksAverageBPM","watchBPM","lowLight","fingerMovement"]
+      },
+      "required": ["ppgScan"]
+    }
+  }
+}

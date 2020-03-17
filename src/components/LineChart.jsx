@@ -2,9 +2,22 @@ import React from "react";
 import * as d3 from "d3";
 // import { postData } from '../utils';
 
-import { calculateWeightedPeaksBPM, calculateAutocorrelationBPM } from '../algorithms/peaksDetection';
-import { calculateStandardDeviation, calculateAutocorrelation } from '../algorithms/signalParameters';
-import { calculateMovingAverage, smoothArray } from '../algorithms/signalFilters';
+import {
+  calculateWeightedPeaksBPM,
+  calculateAutocorrelationBPM,
+  calculateADT
+} from "../algorithms/peaksDetection";
+import {
+  arrayAverage,
+  calculateStandardDeviation,
+  calculateAutocorrelation,
+  calculateFFT
+} from "../algorithms/signalParameters";
+import {
+  calculateMovingAverage,
+  smoothArray,
+  amplitudeNormalization
+} from "../algorithms/signalFilters";
 
 class LineChart extends React.Component {
   constructor(props) {
@@ -20,45 +33,94 @@ class LineChart extends React.Component {
         return elem;
       }
     });
-
-    const preparedPPGData = filteredPPGData.map((elem, index) => {
-      return { x: index, y: elem };
+    function getMinOfArray(numArray) {
+      return Math.min.apply(null, numArray);
+    }
+    const minArrValue = getMinOfArray(filteredPPGData);
+    const normalizedPPGData = filteredPPGData.map((elem, index) => {
+      return elem - minArrValue;
     });
-    // console.log(preparedPPGData);
-    this.renderLineChart(preparedPPGData);
-
-    const smoothedArray = smoothArray(filteredPPGData, 3);
+    // const normalizedPPGData = filteredPPGData;
+    //
+    // const preparedPPGData = filteredPPGData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // // console.log(preparedPPGData);
+    // this.renderLineChart(preparedPPGData);
+    //
+    // const amplitudeNormalizedArr = amplitudeNormalization(filteredPPGData);
+    // // const preparedAmplitudeNormalizedArr = amplitudeNormalizedArr.map(
+    // //   (elem, index) => {
+    // //     return { x: index, y: elem };
+    // //   }
+    // // );
+    // // this.renderLineChart(preparedAmplitudeNormalizedArr);
+    //
+    const smoothedArray = smoothArray(normalizedPPGData, 5);
     const preparedSmoothedArray = smoothedArray.map((elem, index) => {
       return { x: index, y: elem };
     });
     this.renderLineChart(preparedSmoothedArray);
-
-    calculateMovingAverage(filteredPPGData, this.returnResult, this.renderLineChart);
-
-    const autocorrelatedData = calculateAutocorrelation(filteredPPGData);
-    const preparedAutoCorData = autocorrelatedData.map((elem, index) => {
+    //
+    // calculateMovingAverage(
+    //   filteredPPGData,
+    //   this.returnResult,
+    //   this.renderLineChart
+    // );
+    //
+    // const autocorrelatedData = calculateAutocorrelation(filteredPPGData);
+    // const preparedAutoCorData = autocorrelatedData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedAutoCorData);
+    // // console.log(
+    // //   "Autocorrelation BPM:",
+    // //   calculateAutocorrelationBPM(autocorrelatedData)
+    // // );
+    //
+    // console.log(
+    //   "calculateWeightedPeaksBPM:",
+    //   calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
+    // )
+    //
+    const ADTData = calculateADT(smoothedArray, smoothedArray.length / 10).slopeValues;
+    const preparedADTData = ADTData.map((elem, index) => {
       return { x: index, y: elem };
     });
-    this.renderLineChart(preparedAutoCorData);
-    // console.log(
-    //   "Autocorrelation BPM:",
-    //   calculateAutocorrelationBPM(autocorrelatedData)
-    // );
-
-    console.log(
-      console.log(
-        "calculateWeightedPeaksBPM:",
-        calculateWeightedPeaksBPM(filteredPPGData, filteredPPGData.length / 10)
-      )
-    );
+    this.renderMultipleLinesChart(preparedSmoothedArray, preparedADTData);
+    //
+    // const meanMinus = amplitudeNormalization(filteredPPGData);
+    // const preparedmeanMinus = meanMinus.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedmeanMinus);
+    //
+    // const autocorrelatedMeanData = calculateAutocorrelation(meanMinus);
+    // const preparedAutoCorMeanData = autocorrelatedMeanData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedAutoCorMeanData);
+    // const fftData = calculateFFT(normalizedPPGData)
+    // const fftFrequencyData = fftData.outFrequencyData;
+    // const reconstructedSignal = fftData.ifftOut;
+    // const preparedFFTData = fftFrequencyData.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // const preparediFFTData = reconstructedSignal.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedFFTData);
+    // this.renderLineChart(preparediFFTData);
+    // const smoothedFFTArray = smoothArray(reconstructedSignal, 10);
+    // const preparedFFTSmoothedArray = smoothedFFTArray.map((elem, index) => {
+    //   return { x: index, y: elem };
+    // });
+    // this.renderLineChart(preparedFFTSmoothedArray);
   }
 
   returnResult(dataArr, movingAverageArr) {
     let peaksNumber = 0;
-    const averageAmplitude =
-      movingAverageArr.reduce(
-        (accumulator, currentValue) => accumulator + currentValue
-      ) / movingAverageArr.length;
+    const averageAmplitude = arrayAverage(dataArr);
 
     for (var i = 0; i < movingAverageArr.length; i++) {
       if (movingAverageArr[i] > averageAmplitude) {
@@ -198,6 +260,104 @@ class LineChart extends React.Component {
     //     //         .duration(duration)
     //     //         .attr("r", circleRadius);
     //     // });
+
+    /* Add Axis into SVG */
+    let xAxis = d3.axisBottom(xScale).ticks(5);
+    let yAxis = d3.axisLeft(yScale).ticks(5);
+
+    svg
+      .append("g")
+      .attr("class", "x axis")
+      .attr("transform", `translate(0, ${height - margin})`)
+      .call(xAxis)
+      .append("text")
+      .attr("x", width - 60)
+      .attr("y", 30)
+      .attr("fill", "#000")
+      .text("Time");
+
+    svg
+      .append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+      .append("text")
+      .attr("y", 15)
+      .attr("transform", "rotate(-90)")
+      .attr("fill", "#000")
+      .text("Values");
+  }
+
+  renderMultipleLinesChart(payload, modifiedPayload) {
+    if (!payload || !modifiedPayload) return;
+    d3.selectAll(".dot").remove();
+    let data = payload;
+    let modifiedData = modifiedPayload;
+    let width = 1000;
+    let height = 500;
+    let margin = 50;
+
+    let lineOpacity = "0.25";
+
+    // data.forEach((d, index) => {
+    //     // d.x = d.x;
+    //     d.y = +d.y;
+    // });
+
+    /* Scale */
+    let xScale = d3
+      .scaleTime()
+      .domain(d3.extent(data, d => d.x))
+      .range([0, width - margin]);
+
+    let yScale = d3
+      .scaleLinear()
+      .domain([0, d3.max(data, d => d.y)])
+      .range([height - margin, 0]);
+
+    let color = d3.scaleOrdinal(d3.schemeCategory10);
+
+    /* Add SVG */
+    let svg = d3
+      .select("#LineChart")
+      .append("svg")
+      .attr("width", width + margin + "px")
+      .attr("height", height + margin + "px")
+      .append("g")
+      .attr("transform", `translate(${margin}, ${margin})`);
+
+    /* Add line into SVG */
+    let baseLine = d3
+      .line()
+      .x(d => xScale(d.x))
+      .y(d => yScale(d.y));
+    let modifiedLine = d3
+      .line()
+      .x(d => xScale(d.x))
+      .y(d => yScale(d.y));
+
+    let lines = svg.append("g").attr("class", "lines");
+
+    lines
+      .data(data)
+      .append("path")
+      .style("fill", "none")
+      .attr("class", "line")
+      .attr("d", () => baseLine(data))
+      .style("stroke", (d, i) => color(i))
+      .style("opacity", lineOpacity);
+
+    lines
+      .selectAll(".line-group")
+      .data(modifiedData)
+      .enter()
+      .append("g")
+      .attr("class", "line-group")
+      .append("path")
+      .style("fill", "none")
+      .attr("class", "line")
+      .attr("d", () => modifiedLine(modifiedData))
+      .style("stroke", (d, i) => color(i))
+      .style("opacity", lineOpacity);
 
     /* Add Axis into SVG */
     let xAxis = d3.axisBottom(xScale).ticks(5);
